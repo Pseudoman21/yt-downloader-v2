@@ -4,32 +4,38 @@ import shutil
 
 
 def _ffmpeg_location():
-    # Homebrew on Apple Silicon puts ffmpeg in /opt/homebrew/bin
     for candidate in ("/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"):
         if os.path.isfile(candidate):
             return os.path.dirname(candidate)
-    return shutil.which("ffmpeg") and os.path.dirname(shutil.which("ffmpeg"))
+    found = shutil.which("ffmpeg")
+    return os.path.dirname(found) if found else None
 
 
 _FFMPEG = _ffmpeg_location()
 
-_YDL_BASE = {
-    "quiet": True,
-    "no_warnings": True,
-    "http_headers": {
-        "User-Agent": (
-            "Mozilla/5.0 (Linux; Android 12; Pixel 6) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/112.0.0.0 Mobile Safari/537.36"
-        ),
-    },
-    "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
-    **({"ffmpeg_location": _FFMPEG} if _FFMPEG else {}),
-}
+
+def _base_opts(cookiefile=None):
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Linux; Android 12; Pixel 6) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/112.0.0.0 Mobile Safari/537.36"
+            ),
+        },
+        "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
+    }
+    if _FFMPEG:
+        opts["ffmpeg_location"] = _FFMPEG
+    if cookiefile and os.path.isfile(cookiefile):
+        opts["cookiefile"] = cookiefile
+    return opts
 
 
-def get_video_info(url: str) -> dict:
-    opts = {**_YDL_BASE, "skip_download": True}
+def get_video_info(url: str, cookiefile=None) -> dict:
+    opts = {**_base_opts(cookiefile), "skip_download": True}
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return {
@@ -43,8 +49,7 @@ def get_video_info(url: str) -> dict:
 
 
 def _extract_formats(formats: list) -> list:
-    # Group video-only or combined streams by height; prefer mp4 over webm
-    by_height: dict = {}
+    by_height = {}
     for f in formats:
         if f.get("vcodec", "none") == "none":
             continue
@@ -76,11 +81,11 @@ def _extract_formats(formats: list) -> list:
     return result
 
 
-def download_video(url: str, format_id: str, output_dir: str, progress_hook=None) -> str:
+def download_video(url: str, format_id: str, output_dir: str, cookiefile=None, progress_hook=None) -> str:
     is_audio = format_id == "bestaudio/best"
 
     opts = {
-        **_YDL_BASE,
+        **_base_opts(cookiefile),
         "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
     }
 
@@ -95,7 +100,6 @@ def download_video(url: str, format_id: str, output_dir: str, progress_hook=None
             "preferredquality": "192",
         }]
     else:
-        # Merge specific video stream with best available audio
         opts["format"] = f"{format_id}+bestaudio[ext=m4a]/{format_id}+bestaudio/best"
         opts["merge_output_format"] = "mp4"
 
