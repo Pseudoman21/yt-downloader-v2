@@ -14,28 +14,44 @@ def _ffmpeg_location():
 _FFMPEG = _ffmpeg_location()
 
 
-def _base_opts(cookiefile=None):
-    has_cookies = bool(cookiefile and os.path.isfile(cookiefile))
-
-    opts = {
-        "quiet": True,
-        "no_warnings": True,
-        # Use web client when authenticated (cookies unlock full DASH streams).
-        # Fall back to android_vr to bypass SABR blocking on unauthenticated datacenter IPs.
-        "extractor_args": {
-            "youtube": {"player_client": ["web"] if has_cookies else ["android_vr"]}
-        },
-    }
+def _common(cookiefile=None):
+    opts = {"quiet": True, "no_warnings": True}
     if _FFMPEG:
         opts["ffmpeg_location"] = _FFMPEG
-    if has_cookies:
+    if cookiefile and os.path.isfile(cookiefile):
         opts["cookiefile"] = cookiefile
     return opts
 
 
+def _info_opts(cookiefile=None):
+    """For fetching metadata: web client with cookies unlocks full DASH format list."""
+    has_cookies = bool(cookiefile and os.path.isfile(cookiefile))
+    return {
+        **_common(cookiefile),
+        "skip_download": True,
+        "extractor_args": {
+            "youtube": {"player_client": ["web"] if has_cookies else ["android_vr"]}
+        },
+    }
+
+
+def _download_opts(cookiefile=None):
+    """For downloading: android_vr stream URLs are not IP-locked like web client URLs."""
+    return {
+        **_common(cookiefile),
+        "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Linux; Android 12; Pixel 6) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/112.0.0.0 Mobile Safari/537.36"
+            ),
+        },
+    }
+
+
 def get_video_info(url: str, cookiefile=None) -> dict:
-    opts = {**_base_opts(cookiefile), "skip_download": True}
-    with yt_dlp.YoutubeDL(opts) as ydl:
+    with yt_dlp.YoutubeDL(_info_opts(cookiefile)) as ydl:
         info = ydl.extract_info(url, download=False)
         return {
             "title": info.get("title", "Unknown"),
@@ -84,7 +100,7 @@ def download_video(url: str, format_id: str, output_dir: str, cookiefile=None, p
     is_audio = format_id == "bestaudio/best"
 
     opts = {
-        **_base_opts(cookiefile),
+        **_download_opts(cookiefile),
         "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
     }
 
