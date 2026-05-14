@@ -1,14 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Platform-aware spec — used by GitHub Actions on both macOS and Windows runners.
 import os
-import sys
 import platform
-import streamlit
+import customtkinter
 
-STREAMLIT_PATH = os.path.dirname(streamlit.__file__)
+CTK_PATH = os.path.dirname(customtkinter.__file__)
 IS_WIN = platform.system() == "Windows"
 
-# ffmpeg binaries are downloaded into ./bin/ by the CI build script
 FFMPEG = os.path.join("bin", "ffmpeg.exe" if IS_WIN else "ffmpeg")
 FFPROBE = os.path.join("bin", "ffprobe.exe" if IS_WIN else "ffprobe")
 
@@ -19,41 +16,27 @@ if os.path.isfile(FFPROBE):
     binaries.append((FFPROBE, "bin"))
 
 a = Analysis(
-    ["launcher.py"],
+    ["gui.py"],
     pathex=["."],
     binaries=binaries,
     datas=[
-        (os.path.join(STREAMLIT_PATH, "static"), "streamlit/static"),
-        (os.path.join(STREAMLIT_PATH, "runtime"), "streamlit/runtime"),
-        (os.path.join(STREAMLIT_PATH, "components"), "streamlit/components"),
-        ("app.py", "."),
+        (CTK_PATH, "customtkinter"),
         ("yt_downloader.py", "."),
-        (".streamlit", ".streamlit"),
     ],
     hiddenimports=[
-        "streamlit",
-        "streamlit.web.bootstrap",
-        "streamlit.web.cli",
-        "streamlit.runtime.scriptrunner",
-        "streamlit.runtime.caching",
-        "streamlit.components.v1",
+        "customtkinter",
+        "PIL",
+        "PIL._tkinter_finder",
         "yt_dlp",
         "yt_dlp.extractor",
         "yt_dlp.extractor._extractors",
         "yt_dlp.postprocessor",
         "yt_dlp.downloader",
         "yt_dlp.utils",
-        "altair",
-        "pydeck",
-        "pyarrow",
-        "click",
-        "tornado",
-        "packaging",
-        "validators",
     ],
     hookspath=[],
     runtime_hooks=[],
-    excludes=[],
+    excludes=["streamlit"],
     noarchive=False,
 )
 
@@ -82,7 +65,6 @@ coll = COLLECT(
     name="YT Downloader",
 )
 
-# macOS .app bundle only
 if not IS_WIN:
     app = BUNDLE(
         coll,
