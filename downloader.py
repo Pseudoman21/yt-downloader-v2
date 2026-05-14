@@ -15,21 +15,20 @@ _FFMPEG = _ffmpeg_location()
 
 
 def _base_opts(cookiefile=None):
+    has_cookies = bool(cookiefile and os.path.isfile(cookiefile))
+
     opts = {
         "quiet": True,
         "no_warnings": True,
-        "http_headers": {
-            "User-Agent": (
-                "Mozilla/5.0 (Linux; Android 12; Pixel 6) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/112.0.0.0 Mobile Safari/537.36"
-            ),
+        # Use web client when authenticated (cookies unlock full DASH streams).
+        # Fall back to android_vr to bypass SABR blocking on unauthenticated datacenter IPs.
+        "extractor_args": {
+            "youtube": {"player_client": ["web"] if has_cookies else ["android_vr"]}
         },
-        "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
     }
     if _FFMPEG:
         opts["ffmpeg_location"] = _FFMPEG
-    if cookiefile and os.path.isfile(cookiefile):
+    if has_cookies:
         opts["cookiefile"] = cookiefile
     return opts
 
