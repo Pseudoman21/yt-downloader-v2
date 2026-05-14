@@ -1,9 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import platform
-import customtkinter
+from PyInstaller.utils.hooks import collect_all, collect_data_files
 
-CTK_PATH = os.path.dirname(customtkinter.__file__)
 IS_WIN = platform.system() == "Windows"
 
 FFMPEG = os.path.join("bin", "ffmpeg.exe" if IS_WIN else "ffmpeg")
@@ -15,28 +14,28 @@ if os.path.isfile(FFMPEG):
 if os.path.isfile(FFPROBE):
     binaries.append((FFPROBE, "bin"))
 
+# collect_all properly includes data files, binaries, and hidden imports
+ctk_datas, ctk_bins, ctk_hidden = collect_all("customtkinter")
+ytdlp_datas, ytdlp_bins, ytdlp_hidden = collect_all("yt_dlp")
+
 a = Analysis(
     ["gui.py"],
     pathex=["."],
-    binaries=binaries,
-    datas=[
-        (CTK_PATH, "customtkinter"),
-        ("yt_downloader.py", "."),
-    ],
-    hiddenimports=[
-        "customtkinter",
+    binaries=binaries + ctk_bins + ytdlp_bins,
+    datas=ctk_datas + ytdlp_datas,
+    hiddenimports=ctk_hidden + ytdlp_hidden + [
+        "tkinter",
+        "tkinter.ttk",
+        "tkinter.messagebox",
+        "_tkinter",
         "PIL",
         "PIL._tkinter_finder",
-        "yt_dlp",
-        "yt_dlp.extractor",
-        "yt_dlp.extractor._extractors",
-        "yt_dlp.postprocessor",
-        "yt_dlp.downloader",
-        "yt_dlp.utils",
+        "PIL.Image",
+        "PIL.ImageTk",
     ],
     hookspath=[],
     runtime_hooks=[],
-    excludes=["streamlit"],
+    excludes=[],
     noarchive=False,
 )
 

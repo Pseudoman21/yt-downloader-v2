@@ -1,11 +1,33 @@
-import customtkinter as ctk
-import threading
-import os
 import sys
-import tempfile
+import os
+import traceback
+
+# Catch startup crashes and write to ~/ytdl_error.txt + show a dialog
+def _excepthook(exc_type, exc_value, exc_tb):
+    msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    log = os.path.join(os.path.expanduser("~"), "ytdl_error.txt")
+    try:
+        with open(log, "w") as f:
+            f.write(msg)
+    except Exception:
+        pass
+    try:
+        import tkinter as tk
+        import tkinter.messagebox as mb
+        r = tk.Tk(); r.withdraw()
+        mb.showerror("YT Downloader Error", f"{exc_value}\n\nDetails saved to:\n{log}")
+        r.destroy()
+    except Exception:
+        pass
+
+sys.excepthook = _excepthook
+
+import threading
 import urllib.request
 from io import BytesIO
-from PIL import Image, ImageTk
+
+import customtkinter as ctk
+from PIL import Image
 
 from yt_downloader import get_video_info, download_video, format_duration, format_views
 
