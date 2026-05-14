@@ -4,9 +4,20 @@ import shutil
 
 
 def _ffmpeg_location():
-    for candidate in ("/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"):
+    # 1. Bundled binary set by launcher (PyInstaller build)
+    env_loc = os.environ.get("FFMPEG_LOCATION")
+    if env_loc and os.path.isdir(env_loc):
+        return env_loc
+    # 2. Common system paths
+    for candidate in (
+        "/opt/homebrew/bin/ffmpeg",   # macOS Homebrew Apple Silicon
+        "/usr/local/bin/ffmpeg",       # macOS Homebrew Intel / Linux
+        "/usr/bin/ffmpeg",             # Linux apt
+        r"C:\ffmpeg\bin\ffmpeg.exe",   # Windows manual install
+    ):
         if os.path.isfile(candidate):
             return os.path.dirname(candidate)
+    # 3. Anything on PATH
     found = shutil.which("ffmpeg")
     return os.path.dirname(found) if found else None
 

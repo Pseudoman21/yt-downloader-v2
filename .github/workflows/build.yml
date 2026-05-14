@@ -1,0 +1,81 @@
+name: Build Executables
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            ffmpeg_url: "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip"
+            ffprobe_url: "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip"
+            artifact_path: "dist/YT Downloader.app"
+            artifact_name: "YT-Downloader-mac.zip"
+          - os: windows-latest
+            platform: windows
+            artifact_path: "dist/YT Downloader"
+            artifact_name: "YT-Downloader-windows.zip"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Download ffmpeg (macOS)
+        if: matrix.platform == 'mac'
+        run: |
+          mkdir -p bin
+          curl -L "${{ matrix.ffmpeg_url }}" -o ffmpeg.zip && unzip ffmpeg.zip -d bin && chmod +x bin/ffmpeg
+          curl -L "${{ matrix.ffprobe_url }}" -o ffprobe.zip && unzip ffprobe.zip -d bin && chmod +x bin/ffprobe
+
+      - name: Download ffmpeg (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          mkdir bin
+          curl -L "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -o ffmpeg.zip
+          7z e ffmpeg.zip "*/bin/ffmpeg.exe" "*/bin/ffprobe.exe" -obin -r
+
+      - name: Build with PyInstaller
+        run: pyinstaller yt_downloader.spec --clean --noconfirm
+
+      - name: Zip artifact (macOS)
+        if: matrix.platform == 'mac'
+        run: zip -r "${{ matrix.artifact_name }}" "dist/YT Downloader.app"
+
+      - name: Zip artifact (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: Compress-Archive -Path "dist/YT Downloader" -DestinationPath "${{ matrix.artifact_name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
