@@ -1,4 +1,4 @@
-name: Build Executables
+name: Build Windows Executable
 
 on:
   push:
@@ -8,21 +8,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            platform: mac
-            ffmpeg_url: "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip"
-            ffprobe_url: "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip"
-            artifact_path: "dist/YT Downloader.app"
-            artifact_name: "YT-Downloader-mac.zip"
-          - os: windows-latest
-            platform: windows
-            artifact_path: "dist/YT Downloader"
-            artifact_name: "YT-Downloader-windows.zip"
-
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -34,15 +20,7 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt pyinstaller pyinstaller-hooks-contrib
 
-      - name: Download ffmpeg (macOS)
-        if: matrix.platform == 'mac'
-        run: |
-          mkdir -p bin
-          curl -L "${{ matrix.ffmpeg_url }}" -o ffmpeg.zip && unzip ffmpeg.zip -d bin && chmod +x bin/ffmpeg
-          curl -L "${{ matrix.ffprobe_url }}" -o ffprobe.zip && unzip ffprobe.zip -d bin && chmod +x bin/ffprobe
-
-      - name: Download ffmpeg (Windows)
-        if: matrix.platform == 'windows'
+      - name: Download ffmpeg
         run: |
           mkdir bin
           curl -L "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -o ffmpeg.zip
@@ -51,20 +29,15 @@ jobs:
       - name: Build with PyInstaller
         run: pyinstaller yt_downloader.spec --clean --noconfirm
 
-      - name: Zip artifact (macOS)
-        if: matrix.platform == 'mac'
-        run: zip -r "${{ matrix.artifact_name }}" "dist/YT Downloader.app"
-
-      - name: Zip artifact (Windows)
-        if: matrix.platform == 'windows'
+      - name: Zip artifact
         shell: pwsh
-        run: Compress-Archive -Path "dist/YT Downloader" -DestinationPath "${{ matrix.artifact_name }}"
+        run: Compress-Archive -Path "dist/YT Downloader" -DestinationPath "YT-Downloader-windows.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}
+          name: YT-Downloader-windows.zip
+          path: YT-Downloader-windows.zip
 
   release:
     needs: build
