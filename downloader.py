@@ -1,6 +1,17 @@
 import yt_dlp
 import os
+import shutil
 
+
+def _ffmpeg_location():
+    # Homebrew on Apple Silicon puts ffmpeg in /opt/homebrew/bin
+    for candidate in ("/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"):
+        if os.path.isfile(candidate):
+            return os.path.dirname(candidate)
+    return shutil.which("ffmpeg") and os.path.dirname(shutil.which("ffmpeg"))
+
+
+_FFMPEG = _ffmpeg_location()
 
 _YDL_BASE = {
     "quiet": True,
@@ -12,7 +23,8 @@ _YDL_BASE = {
             "Chrome/112.0.0.0 Mobile Safari/537.36"
         ),
     },
-    "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+    "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
+    **({"ffmpeg_location": _FFMPEG} if _FFMPEG else {}),
 }
 
 
