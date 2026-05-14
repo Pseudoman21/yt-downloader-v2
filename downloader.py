@@ -36,16 +36,25 @@ def _info_opts(cookiefile=None):
 
 
 def _download_opts(cookiefile=None):
-    """For downloading: android_vr stream URLs are not IP-locked like web client URLs."""
+    """
+    Use web client + cookies for download so the client, cookies, and User-Agent
+    are all consistent — mixing android_vr with browser cookies triggers 403.
+    Fall back to android_vr when there are no cookies (local use).
+    """
+    has_cookies = bool(cookiefile and os.path.isfile(cookiefile))
     return {
         **_common(cookiefile),
-        "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
+        "extractor_args": {
+            "youtube": {"player_client": ["web"] if has_cookies else ["android_vr"]}
+        },
         "http_headers": {
             "User-Agent": (
-                "Mozilla/5.0 (Linux; Android 12; Pixel 6) "
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/112.0.0.0 Mobile Safari/537.36"
+                "Chrome/124.0.0.0 Safari/537.36"
             ),
+            "Referer": "https://www.youtube.com/",
+            "Accept-Language": "en-US,en;q=0.9",
         },
     }
 

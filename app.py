@@ -91,7 +91,7 @@ if info:
     col1, col2 = st.columns([1, 2])
     with col1:
         if info["thumbnail"]:
-            st.image(info["thumbnail"], width="stretch")
+            st.image(info["thumbnail"], width=200)
     with col2:
         st.subheader(info["title"])
         st.write(f"**Channel:** {info['uploader']}")
