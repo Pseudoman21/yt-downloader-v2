@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import tempfile
 import threading
-from downloader import get_video_info, download_video, format_duration, format_views
+from yt_downloader import get_video_info, download_video, format_duration, format_views
 
 st.set_page_config(
     page_title="YT Downloader",

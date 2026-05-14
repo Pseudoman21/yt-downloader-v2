@@ -36,16 +36,12 @@ def _info_opts(cookiefile=None):
 
 
 def _download_opts(cookiefile=None):
-    """
-    Use web client + cookies for download so the client, cookies, and User-Agent
-    are all consistent — mixing android_vr with browser cookies triggers 403.
-    Fall back to android_vr when there are no cookies (local use).
-    """
     has_cookies = bool(cookiefile and os.path.isfile(cookiefile))
     return {
         **_common(cookiefile),
+        # Let yt-dlp pick the best working client; cookies help authenticate
         "extractor_args": {
-            "youtube": {"player_client": ["web"] if has_cookies else ["android_vr"]}
+            "youtube": {"player_client": ["web", "android_vr"] if has_cookies else ["android_vr"]}
         },
         "http_headers": {
             "User-Agent": (
@@ -56,6 +52,7 @@ def _download_opts(cookiefile=None):
             "Referer": "https://www.youtube.com/",
             "Accept-Language": "en-US,en;q=0.9",
         },
+        "geo_bypass": True,
     }
 
 
