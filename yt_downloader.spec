@@ -1,28 +1,36 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import sys
 import platform
-from PyInstaller.utils.hooks import collect_all, collect_data_files
+from PyInstaller.utils.hooks import collect_all
 
 IS_WIN = platform.system() == "Windows"
 
-FFMPEG = os.path.join("bin", "ffmpeg.exe" if IS_WIN else "ffmpeg")
+FFMPEG  = os.path.join("bin", "ffmpeg.exe"  if IS_WIN else "ffmpeg")
 FFPROBE = os.path.join("bin", "ffprobe.exe" if IS_WIN else "ffprobe")
 
 binaries = []
-if os.path.isfile(FFMPEG):
-    binaries.append((FFMPEG, "bin"))
-if os.path.isfile(FFPROBE):
-    binaries.append((FFPROBE, "bin"))
+if os.path.isfile(FFMPEG):  binaries.append((FFMPEG,  "bin"))
+if os.path.isfile(FFPROBE): binaries.append((FFPROBE, "bin"))
 
-# collect_all properly includes data files, binaries, and hidden imports
-ctk_datas, ctk_bins, ctk_hidden = collect_all("customtkinter")
+ctk_datas,   ctk_bins,   ctk_hidden   = collect_all("customtkinter")
 ytdlp_datas, ytdlp_bins, ytdlp_hidden = collect_all("yt_dlp")
+
+# --- Explicitly collect tcl/tk data so _tk_data is populated on Windows ---
+tk_datas = []
+if IS_WIN:
+    python_tcl = os.path.join(os.path.dirname(sys.executable), "tcl")
+    if os.path.isdir(python_tcl):
+        for item in os.listdir(python_tcl):
+            full = os.path.join(python_tcl, item)
+            if os.path.isdir(full):
+                tk_datas.append((full, os.path.join("_tk_data", item)))
 
 a = Analysis(
     ["gui.py"],
     pathex=["."],
     binaries=binaries + ctk_bins + ytdlp_bins,
-    datas=ctk_datas + ytdlp_datas,
+    datas=ctk_datas + ytdlp_datas + tk_datas,
     hiddenimports=ctk_hidden + ytdlp_hidden + [
         "tkinter",
         "tkinter.ttk",
@@ -34,7 +42,7 @@ a = Analysis(
         "PIL.ImageTk",
     ],
     hookspath=[],
-    runtime_hooks=[],
+    runtime_hooks=["rthook_tkinter.py"],
     excludes=[],
     noarchive=False,
 )
